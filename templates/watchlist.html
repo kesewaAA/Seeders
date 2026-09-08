@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_card.html" import movie_card %}
+{% block title %}Watchlist — Seeders{% endblock %}
+
+{% block content %}
+  <h1>Your watchlist</h1>
+  <p class="text-muted">Movies you've marked as <em>Want to watch</em>.</p>
+
+  {% if movies %}
+    <div class="poster-grid mt-4">
+      {% for m in movies %}{{ movie_card(m) }}{% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted mt-4">
+      Nothing here yet. <a href="{{ url_for('index') }}">Find something to add</a>.
+    </p>
+  {% endif %}
+{% endblock %}

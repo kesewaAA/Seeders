@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ movie.title }} — Seeders{% endblock %}
+
+{% block content %}
+  {% set backdrop = movie.backdrop_path|backdrop %}
+  <section class="movie-hero" {% if backdrop %}style="--hero-bg: url('{{ backdrop }}');"{% endif %}>
+    <div class="hero-grid">
+      <div class="hero-poster">
+        {% if movie.poster_path %}
+          <img src="{{ movie.poster_path|poster('w500') }}" alt="{{ movie.title }}">
+        {% else %}
+          <div class="poster-placeholder">{{ movie.title[:1] }}</div>
+        {% endif %}
+      </div>
+      <div class="hero-meta">
+        <h1>{{ movie.title }}</h1>
+        <div class="meta-row text-muted">
+          {% if movie.release_year %}<span>{{ movie.release_year }}</span>{% endif %}
+          {% if movie.tmdb_rating %}<span>TMDb {{ '%.1f'|format(movie.tmdb_rating) }}</span>{% endif %}
+          {% if genre_names %}<span>{{ genre_names|join(' · ') }}</span>{% endif %}
+        </div>
+        {% if movie.overview %}
+          <p class="overview">{{ movie.overview }}</p>
+        {% endif %}
+
+        {% if current_user %}
+          <div class="action-bar" data-tmdb-id="{{ movie.tmdb_id }}">
+            <form method="post" action="{{ url_for('set_status', tmdb_id=movie.tmdb_id) }}" class="status-group">
+              <button name="status" value="seen"
+                      class="btn status-btn {% if user_status == 'seen' %}is-active{% endif %}">Seen</button>
+              <button name="status" value="not_seen"
+                      class="btn status-btn {% if user_status == 'not_seen' %}is-active{% endif %}">Not seen</button>
+              <button name="status" value="want_to_watch"
+                      class="btn status-btn {% if user_status == 'want_to_watch' %}is-active{% endif %}">Want to watch</button>
+            </form>
+
+            <form method="post" action="{{ url_for('rate_movie', tmdb_id=movie.tmdb_id) }}" class="rating-form">
+              <label class="form-label small text-muted mb-1">Your rating (1–10)</label>
+              <div class="rating-row">
+                <input type="number" name="rating" min="1" max="10" step="0.5"
+                       value="{{ user_rating if user_rating is not none else '' }}"
+                       class="form-control rating-input" required>
+                <button class="btn btn-accent">Save</button>
+              </div>
+            </form>
+          </div>
+        {% else %}
+          <p class="mt-3">
+            <a class="btn btn-accent" href="{{ url_for('login') }}">Log in to track this movie</a>
+          </p>
+        {% endif %}
+
+        {% if error %}<div class="alert alert-warning mt-3">{{ error }}</div>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  {# ── Where to watch ─────────────────────────────────────────────────── #}
+  <section class="where-to-watch mt-5">
+    <h2>Where to watch</h2>
+
+    {% if streaming_error %}
+      <p class="text-muted small">Streaming info unavailable right now.</p>
+    {% elif avail_grouped %}
+      {% set group_labels = {
+          "subscription": "Included with subscription",
+          "free": "Free with ads",
+          "addon": "Add-on required",
+          "rent": "Rent or buy",
+          "buy": "Rent or buy"
+      } %}
+      {# Render groups in a predictable priority order #}
+      {% for access_type in ["subscription", "free", "addon", "rent", "buy"] %}
+        {% if avail_grouped[access_type] is defined %}
+          <div class="avail-group mb-3">
+            <div class="avail-group-label text-muted small mb-2">
+              {{ group_labels.get(access_type, access_type|capitalize) }}
+            </div>
+            <div class="avail-platform-list">
+              {% for row in avail_grouped[access_type] %}
+                {% if access_type in ("subscription", "free") %}
+                  {% set badge_cls = "bg-success" %}
+                {% else %}
+                  {% set badge_cls = "bg-warning text-dark" %}
+                {% endif %}
+                <span class="avail-platform-chip">
+                  {% if row.link %}
+                    <a href="{{ row.link }}" target="_blank" rel="noopener"
+                       class="badge {{ badge_cls }} avail-chip-link">
+                      {{ row.platform }}
+                      {% if row.quality %} · {{ row.quality }}{% endif %}
+                      {% if row.price %} · ${{ '%.2f'|format(row.price) }}{% endif %}
+                    </a>
+                  {% else %}
+                    <span class="badge {{ badge_cls }}">
+                      {{ row.platform }}
+                      {% if row.quality %} · {{ row.quality }}{% endif %}
+                    </span>
+                  {% endif %}
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <p class="text-muted small">No streaming data available for this title.</p>
+    {% endif %}
+  </section>
+{% endblock %}

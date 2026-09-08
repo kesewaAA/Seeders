@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Seeders{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg app-navbar sticky-top">
+    <div class="container">
+      <a class="navbar-brand brand" href="{{ url_for('index') }}">
+        <span class="brand-mark">SE</span>
+        <span class="brand-text">Seeders</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nav">
+        <form class="d-flex ms-lg-4 flex-grow-1 search-form" role="search" action="{{ url_for('search') }}" method="get">
+          <input class="form-control search-input" type="search" name="q" placeholder="Search movies..." value="{{ request.args.get('q', '') }}">
+        </form>
+        <ul class="navbar-nav ms-auto align-items-lg-center">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
+          {% if current_user %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('discover_page') }}">Discover</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('recommendations') }}">For you</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('watchlist') }}">Watchlist</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('analytics') }}">Analytics</a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">{{ current_user.username }}</a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ url_for('logout') }}">Sign out</a></li>
+              </ul>
+            </li>
+          {% else %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Log in</a></li>
+            <li class="nav-item"><a class="btn btn-accent ms-lg-2" href="{{ url_for('register') }}">Sign up</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="app-footer">
+    <div class="container">
+      <small>Data from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDb</a>. Not endorsed by TMDb.</small>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

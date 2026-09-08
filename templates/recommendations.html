@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "_card.html" import movie_card %}
+{% block title %}Recommendations — Seeders{% endblock %}
+
+{% block content %}
+  <h1>Recommended for you</h1>
+  <p class="text-muted">
+    Scored by TMDb rating, recency, and how well each movie matches your top genres
+    {% if top_genres %}
+      ({% for gid in top_genres %}{{ genres.get(gid, gid) }}{% if not loop.last %}, {% endif %}{% endfor %})
+    {% else %}
+      (watch and rate a few movies to personalise this)
+    {% endif %}.
+  </p>
+
+  {% if error %}<div class="alert alert-warning">{{ error }}</div>{% endif %}
+
+  <form method="get" class="filter-panel mt-4" id="recFilterForm">
+    <div class="row g-3">
+
+      <div class="col-md-6">
+        <label class="form-label">Genres</label>
+        <div class="genre-grid">
+          {% for gid, name in genres.items()|sort(attribute=1) %}
+            <label class="genre-chip">
+              <input type="checkbox" name="genre" value="{{ gid }}"
+                     {% if gid in selected_genres %}checked{% endif %}>
+              <span>{{ name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Year from</label>
+        <input type="number" class="form-control" name="year_min"
+               value="{{ year_min or '' }}" placeholder="1990">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Year to</label>
+        <input type="number" class="form-control" name="year_max"
+               value="{{ year_max or '' }}" placeholder="2026">
+      </div>
+
+      <div class="col-md-5">
+        <label class="form-label">
+          Min TMDb rating
+          <span class="text-muted ms-1" id="recMinVal">{{ min_rating or 0 }}</span>
+        </label>
+        <input type="range" class="form-range" name="min_rating"
+               min="0" max="10" step="0.5" value="{{ min_rating or 0 }}"
+               oninput="document.getElementById('recMinVal').textContent=this.value">
+      </div>
+
+      <div class="col-md-3 d-flex align-items-end">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="free_only" value="1"
+                 id="recFreeOnly" {% if free_only %}checked{% endif %}>
+          <label class="form-check-label" for="recFreeOnly">Free / included only</label>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label mb-1">Streaming platforms</label>
+        <div class="d-flex flex-wrap gap-2">
+          {% set platforms = [
+              ("netflix",  "Netflix"),
+              ("prime",    "Prime Video"),
+              ("hulu",     "Hulu"),
+              ("max",      "Max"),
+              ("disney",   "Disney+"),
+              ("apple",    "Apple TV+"),
+              ("tubi",     "Tubi"),
+          ] %}
+          {% for slug, label in platforms %}
+            <label class="genre-chip">
+              <input type="checkbox" name="platform" value="{{ slug }}"
+                     {% if slug in selected_platforms %}checked{% endif %}>
+              <span>{{ label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+        <button class="btn btn-accent">Apply</button>
+        <a class="btn btn-outline-light" href="{{ url_for('recommendations') }}">Reset</a>
+        <span class="ms-auto">
+          <button class="btn btn-outline-light btn-sm" form="recSaveForm">Save as my default</button>
+        </span>
+      </div>
+    </div>
+  </form>
+
+  {# Hidden save-as-default form — submits current filter values to /preferences #}
+  <form id="recSaveForm" method="post"
+        action="{{ url_for('save_preferences', next=request.full_path) }}"
+        class="d-none">
+    <input type="hidden" name="min_rating" value="{{ min_rating or 0 }}">
+    <input type="hidden" name="free_only" value="{{ '1' if free_only else '0' }}">
+    {% for slug in selected_platforms %}
+      <input type="hidden" name="platforms" value="{{ slug }}">
+    {% endfor %}
+  </form>
+
+  {% if scored %}
+    <div class="poster-grid mt-4">
+      {% for score, movie in scored %}
+        {{ movie_card(movie, score=score, avail=avail_map.get(movie.id, [])) }}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted mt-4">No candidates matched your filters.</p>
+  {% endif %}
+{% endblock %}

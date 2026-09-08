@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_card.html" import movie_card %}
+{% block title %}Home — Seeders{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <h1>Track what you watch.</h1>
+    <p class="lead text-muted">Search, rate, and get recommendations tuned to your taste.</p>
+    <form class="hero-search" action="{{ url_for('search') }}" method="get">
+      <input type="search" name="q" class="form-control form-control-lg" placeholder="Search for a movie...">
+      <button class="btn btn-accent btn-lg" type="submit">Search</button>
+    </form>
+  </section>
+
+  {% if error %}
+    <div class="alert alert-warning">{{ error }}</div>
+  {% endif %}
+
+  {% if trending %}
+  <section class="mt-5">
+    <div class="row-header">
+      <h2>Global Trending</h2>
+      <span class="text-muted small">This week</span>
+    </div>
+    <div class="poster-row">
+      {% for m in trending %}{{ movie_card(m) }}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if recent %}
+  <section class="mt-5">
+    <div class="row-header">
+      <h2>Recent Releases</h2>
+      <span class="text-muted small">Past 12 months</span>
+    </div>
+    <div class="poster-row">
+      {% for m in recent %}{{ movie_card(m) }}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if current_user %}
+  <section class="mt-5">
+    <div class="discover-callout">
+      <div>
+        <h3 class="mb-1">Not sure what to watch next?</h3>
+        <p class="text-muted mb-0">
+          Swipe through a personalised deck of recent films — right to add to your
+          watchlist, left to skip.
+        </p>
+      </div>
+      <a href="{{ url_for('discover_page') }}" class="btn btn-accent">Try Discover mode</a>
+    </div>
+  </section>
+  {% endif %}
+{% endblock %}

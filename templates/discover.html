@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Discover — Seeders{% endblock %}
+
+{% block content %}
+<div class="discover-wrap">
+  <h1>Discover</h1>
+  <p class="text-muted mb-4">
+    Swipe right to add to your watchlist, left to skip.
+  </p>
+
+  {% if error %}
+    <div class="alert alert-warning">{{ error }}</div>
+  {% endif %}
+
+  <div id="swipe-stage">
+
+    {# ── Movie card (shown when queue has items) ──────────────────────── #}
+    <div id="swipe-card" class="swipe-card d-none">
+      {# Blurred backdrop fills the whole card background #}
+      <div class="swipe-backdrop" id="swipeBackdrop"></div>
+
+      <div class="swipe-inner">
+        {# Poster with rating badge #}
+        <div class="swipe-poster-wrap" id="swipePosterWrap">
+          <img id="swipePoster" src="" alt="" class="swipe-poster-img">
+          <div id="swipePlaceholder" class="swipe-poster-placeholder d-none"></div>
+          <span id="swipeRatingBadge" class="badge swipe-rating-badge"></span>
+        </div>
+
+        {# Info below the poster #}
+        <div class="swipe-info">
+          <h2 id="swipeTitle" class="swipe-title"></h2>
+          <p id="swipeMeta" class="text-muted small mb-2"></p>
+          <div id="swipePlatforms" class="avail-pills"></div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Empty state ───────────────────────────────────────────────────── #}
+    <div id="swipe-empty" class="{% if queue_empty %}{% else %}d-none{% endif %} text-center py-5">
+      {% if queue_empty %}
+        <p class="text-muted">
+          No new picks match your filters right now
+          {% if min_rating and min_rating > 0 %}
+            — try lowering your rating threshold (currently {{ min_rating }})
+          {% endif %}.
+        </p>
+      {% else %}
+        <p class="text-muted">You've reached the end of your queue.</p>
+      {% endif %}
+      <a href="{{ url_for('watchlist') }}" class="btn btn-accent me-2">View watchlist</a>
+      <a href="{{ url_for('discover_page') }}" class="btn btn-outline-light">Reload</a>
+    </div>
+
+  </div>
+
+  <div class="swipe-controls mt-4" id="swipeControls" {% if queue_empty %}style="display:none"{% endif %}>
+    <button id="btnLeft" class="btn btn-outline-light swipe-btn" title="Skip">
+      ✕ &nbsp;Skip
+    </button>
+    <button id="btnRight" class="btn btn-accent swipe-btn" title="Add to watchlist">
+      + &nbsp;Watchlist
+    </button>
+  </div>
+
+  <p class="text-muted small mt-3 text-center">
+    <a href="{{ url_for('recommendations') }}">Back to recommendations</a>
+  </p>
+</div>
+
+{# Candidate queue injected server-side — no per-swipe round-trips needed #}
+<script id="queue-data" type="application/json">{{ queue | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const queue = JSON.parse(document.getElementById('queue-data').textContent);
+  let idx = 0;
+
+  const card        = document.getElementById('swipe-card');
+  const emptyState  = document.getElementById('swipe-empty');
+  const controls    = document.getElementById('swipeControls');
+  const backdrop    = document.getElementById('swipeBackdrop');
+  const posterImg   = document.getElementById('swipePoster');
+  const placeholder = document.getElementById('swipePlaceholder');
+  const ratingBadge = document.getElementById('swipeRatingBadge');
+  const titleEl     = document.getElementById('swipeTitle');
+  const metaEl      = document.getElementById('swipeMeta');
+  const platformsEl = document.getElementById('swipePlatforms');
+
+  function ratingClass(r) {
+    if (r >= 7)  return 'bg-success';
+    if (r >= 5)  return 'bg-warning text-dark';
+    return 'bg-secondary';
+  }
+
+  function showCard(i) {
+    if (i >= queue.length) {
+      card.classList.add('d-none');
+      controls.style.display = 'none';
+      emptyState.classList.remove('d-none');
+      return;
+    }
+
+    const m = queue[i];
+    card.classList.remove('d-none');
+    emptyState.classList.add('d-none');
+    controls.style.display = '';
+
+    // Blurred backdrop
+    backdrop.style.backgroundImage = m.backdrop ? `url('${m.backdrop}')` : 'none';
+
+    // Poster
+    if (m.poster) {
+      posterImg.src = m.poster;
+      posterImg.alt = m.title;
+      posterImg.classList.remove('d-none');
+      placeholder.classList.add('d-none');
+    } else {
+      posterImg.classList.add('d-none');
+      placeholder.classList.remove('d-none');
+      placeholder.textContent = m.title ? m.title[0].toUpperCase() : '?';
+    }
+
+    // Rating badge
+    if (m.rating) {
+      ratingBadge.textContent = m.rating.toFixed(1);
+      ratingBadge.className = `badge swipe-rating-badge ${ratingClass(m.rating)}`;
+    } else {
+      ratingBadge.textContent = '';
+      ratingBadge.className = 'badge swipe-rating-badge d-none';
+    }
+
+    // Title
+    titleEl.textContent = m.title;
+
+    // Meta: year · Genre · Genre
+    const metaParts = [];
+    if (m.year)  metaParts.push(m.year);
+    if (m.genres && m.genres.length) metaParts.push(m.genres.join(', '));
+    metaEl.textContent = metaParts.join(' · ');
+
+    // Platform pills (max 3)
+    platformsEl.innerHTML = '';
+    (m.platforms || []).slice(0, 3).forEach(p => {
+      const free = p.type === 'subscription' || p.type === 'free';
+      const el = document.createElement('span');
+      el.className = `badge avail-pill me-1 ${free ? 'bg-success' : 'bg-warning text-dark'}`;
+      el.textContent = p.platform + (free ? '' : ' · ' + p.type);
+      platformsEl.appendChild(el);
+    });
+  }
+
+  function swipe(direction) {
+    if (idx >= queue.length) return;
+    const tmdb_id = queue[idx].tmdb_id;
+    idx++;
+    showCard(idx);
+
+    fetch("{{ url_for('discover_swipe') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tmdb_id, direction }),
+    }).catch(() => {});
+  }
+
+  document.getElementById('btnLeft').addEventListener('click',  () => swipe('left'));
+  document.getElementById('btnRight').addEventListener('click', () => swipe('right'));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  swipe('left');
+    if (e.key === 'ArrowRight') swipe('right');
+  });
+
+  // Only start JS-driven display if there's actually a queue
+  if (queue.length > 0) showCard(0);
+})();
+</script>
+{% endblock %}

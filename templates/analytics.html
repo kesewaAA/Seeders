@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Seeders{% endblock %}
+
+{% block content %}
+  <h1>Your stats</h1>
+
+  <div class="stat-grid mt-4">
+    <div class="stat-card">
+      <div class="stat-label">Movies seen</div>
+      <div class="stat-value">{{ total_seen }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Average rating given</div>
+      <div class="stat-value">
+        {% if avg_rating is not none %}{{ avg_rating }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-sub text-muted">across {{ rating_count }} ratings</div>
+    </div>
+  </div>
+
+  <div class="row g-4 mt-2">
+    <div class="col-lg-6">
+      <div class="chart-card">
+        <h3>Status breakdown</h3>
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="chart-card">
+        <h3>Most watched genres</h3>
+        <canvas id="genreChart"></canvas>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="chart-card">
+        <h3>Movies watched by release year</h3>
+        <canvas id="yearChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script id="chart-data" type="application/json">{{ chart_data|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+    const accent = '#e50914';
+    const textColor = '#d9d9d9';
+
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+
+    new Chart(document.getElementById('statusChart'), {
+      type: 'doughnut',
+      data: {
+        labels: data.statusLabels,
+        datasets: [{
+          data: data.statusValues,
+          backgroundColor: ['#e50914', '#6c757d', '#ffc107'],
+          borderWidth: 0,
+        }],
+      },
+      options: { plugins: { legend: { position: 'bottom' } } },
+    });
+
+    new Chart(document.getElementById('genreChart'), {
+      type: 'bar',
+      data: {
+        labels: data.genreLabels,
+        datasets: [{ label: 'Seen', data: data.genreValues, backgroundColor: accent }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+
+    new Chart(document.getElementById('yearChart'), {
+      type: 'bar',
+      data: {
+        labels: data.yearLabels,
+        datasets: [{ label: 'Movies', data: data.yearValues, backgroundColor: accent }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  })();
+</script>
+{% endblock %}

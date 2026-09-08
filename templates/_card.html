@@ -1,0 +1,61 @@
+{% macro movie_card(movie, score=None, avail=[]) %}
+  {# Accept both SQLAlchemy model instances and raw TMDb payload dicts #}
+  {% set poster    = movie.poster_path    if movie.poster_path    is defined else movie.get('poster_path') %}
+  {% set title     = movie.title          if movie.title          is defined else movie.get('title') %}
+  {% set tmdb_id   = movie.tmdb_id        if movie.tmdb_id        is defined else movie.get('id') %}
+  {% set year_raw  = movie.release_year   if movie.release_year   is defined else (movie.get('release_date') or '')[:4] %}
+  {% set rating    = movie.tmdb_rating    if movie.tmdb_rating    is defined else movie.get('vote_average') %}
+
+  {# Rating badge colour: green ≥7, amber 5–7, muted otherwise #}
+  {% if rating %}
+    {% if rating >= 7 %}
+      {% set r_class = "bg-success" %}
+    {% elif rating >= 5 %}
+      {% set r_class = "bg-warning text-dark" %}
+    {% else %}
+      {% set r_class = "bg-secondary" %}
+    {% endif %}
+  {% endif %}
+
+  {# Availability pills — cap at 2 visible + "+N more" #}
+  {% set free_types = ("subscription", "free") %}
+  {% set paid_types = ("addon", "rent", "buy") %}
+
+  <a class="movie-card" href="{{ url_for('movie_page', tmdb_id=tmdb_id) }}">
+    <div class="poster-wrap">
+      {% if poster %}
+        <img loading="lazy" src="{{ poster|poster }}" alt="{{ title }}">
+      {% else %}
+        <div class="poster-placeholder">{{ title[:1] }}</div>
+      {% endif %}
+
+      {% if rating %}
+        <span class="rating-overlay badge {{ r_class }}">{{ '%.1f'|format(rating) }}</span>
+      {% endif %}
+      {% if score is not none %}
+        <span class="score-badge">{{ '%.2f'|format(score) }}</span>
+      {% endif %}
+    </div>
+
+    <div class="card-meta">
+      <div class="title">{{ title }}</div>
+      <div class="year text-muted">{{ year_raw or '—' }}</div>
+
+      {% if avail %}
+        <div class="avail-pills">
+          {% for row in avail[:2] %}
+            {% if row.access_type in free_types %}
+              {% set pill_cls = "bg-success" %}
+            {% else %}
+              {% set pill_cls = "bg-warning text-dark" %}
+            {% endif %}
+            <span class="badge {{ pill_cls }} avail-pill">{{ row.platform }}</span>
+          {% endfor %}
+          {% if avail|length > 2 %}
+            <span class="badge bg-secondary avail-pill">+{{ avail|length - 2 }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </a>
+{% endmacro %}
